@@ -1,0 +1,24 @@
+[package]
+name = "osv-bloom-build"
+version = "0.1.0"
+description = "CLI: download OSV npm advisories and build the malicious-bucket bloom filter"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "osv-bloom-build"
+path = "src/main.rs"
+
+[dependencies]
+osv-bloom = { path = "../osv-bloom" }
+serde.workspace = true
+serde_json.workspace = true
+semver.workspace = true
+anyhow = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "blocking"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+sha2 = "0.10"
+clap = { version = "4", features = ["derive"] }
