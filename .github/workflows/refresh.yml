@@ -43,7 +43,10 @@ jobs:
         id: commit
         run: |
           set -euo pipefail
-          if git diff --quiet dist/filter.bin; then
+          git config user.name 'osv-bloom-bot[bot]'
+          git config user.email 'osv-bloom-bot@users.noreply.github.com'
+          git add dist/filter.bin dist/manifest.json
+          if git diff --cached --quiet; then
             echo "filter.bin unchanged — skipping commit"
             echo "committed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -51,9 +54,6 @@ jobs:
           entry_count=$(jq -r .entry_count dist/manifest.json)
           advisory_count=$(jq -r .advisory_count dist/manifest.json)
           set_digest=$(jq -r .set_digest_sha256 dist/manifest.json | cut -c1-12)
-          git config user.name 'osv-bloom-bot[bot]'
-          git config user.email 'osv-bloom-bot@users.noreply.github.com'
-          git add dist/filter.bin dist/manifest.json
           git commit -m "chore: refresh filter (${entry_count} entries, ${advisory_count} advisories, set@${set_digest})"
           git push
           echo "committed=true" >> "$GITHUB_OUTPUT"
