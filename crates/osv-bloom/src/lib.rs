@@ -63,6 +63,7 @@ pub enum BuildError {
 }
 
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum DecodeError {
     #[error("buffer shorter than 64-byte header")]
     TooShort,
@@ -478,19 +479,32 @@ mod tests {
         assert!(matches!(r, Err(BuildError::MTooLarge { .. })));
     }
 
+    /// Pin the v1 wire-format output against a known-good digest.
+    ///
+    /// Any change to `hash`, the index walk, the byte layout, the
+    /// `default_seed` derivation, or the encoded header order flips
+    /// this digest and breaks the test. If you intentionally changed
+    /// the wire format, bump `FORMAT_VERSION` and update the golden
+    /// value below.
     #[test]
-    fn hash_output_is_pinned_for_default_seed() {
+    fn encoded_output_is_pinned_for_default_seed() {
         let mut b = Bloom::new(1_000, 0.001, default_seed());
         b.insert("evil-pkg", "1");
-        // Bytes are deterministic by construction; assert two
-        // independent rebuilds produce the same bitset.
-        let mut b2 = Bloom::new(1_000, 0.001, default_seed());
-        b2.insert("evil-pkg", "1");
-        assert_eq!(b.bits, b2.bits);
-        // And a known-probe matches.
-        assert!(b.contains("evil-pkg", "1"));
-        assert!(!b.contains("evil-pkg", "2"));
-        assert!(!b.contains("other", "1"));
+        b.insert("@scope/pkg", "0.3");
+        b.insert("wildcard-pkg", WILDCARD_BUCKET);
+        // `built_at` defaults to 0 so the encoded bytes are fully
+        // deterministic across machines and runs.
+        let encoded = b.encode();
+        // BLAKE3-digest the encoded bytes so we pin the entire byte
+        // sequence in one line instead of pasting ~1.8 KB of hex.
+        let digest = blake3::hash(&encoded).to_hex();
+        let expected = "64e383388a659b33149a59b70dfd814d0e4472c60b45a05d2ad00efdf6f1915d";
+        assert_eq!(
+            digest.as_str(),
+            expected,
+            "wire-format output changed. \
+             If intentional, bump FORMAT_VERSION and update this digest.",
+        );
     }
 
     #[test]
