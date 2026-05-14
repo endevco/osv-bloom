@@ -6,16 +6,18 @@ Built so package managers (initially [aube](https://github.com/endevco/aube)) ca
 
 ## Consume
 
-Two files in [`dist/`](./dist/) on `main`:
+Served via GitHub Pages — no binary artifacts live in git. The
+[`refresh` workflow](./.github/workflows/refresh.yml) rebuilds the
+filter every 10 minutes and re-deploys the site.
 
-- [`dist/filter.bin`](./dist/filter.bin) — the bloom filter itself
-- [`dist/manifest.json`](./dist/manifest.json) — params, timestamps, digests
+- `filter.bin` — the bloom filter itself
+- `manifest.json` — params, timestamps, digests
 
-Raw URLs (CDN-cached, `If-None-Match` for change detection):
+URLs (CDN-cached, `If-None-Match` for change detection):
 
 ```
-https://raw.githubusercontent.com/endevco/osv-bloom/main/dist/filter.bin
-https://raw.githubusercontent.com/endevco/osv-bloom/main/dist/manifest.json
+https://endevco.github.io/osv-bloom/filter.bin
+https://endevco.github.io/osv-bloom/manifest.json
 ```
 
 Rust consumers can depend on the reader crate directly:
@@ -38,7 +40,7 @@ if bloom.contains("evil-pkg", &bucket(1, 0)) {
 
 ## Refresh cadence
 
-GitHub Actions cron runs every 10 minutes. The workflow re-downloads `all.zip`, rebuilds the entry set, and only commits when the underlying `(name, bucket)` set actually changed (commit message: `chore: refresh filter (N entries, M advisories, set@<digest>)`). Most ticks produce no commit — OSV doesn't publish that fast.
+GitHub Actions cron runs every 10 minutes. The workflow re-downloads `all.zip`, rebuilds the entry set, and re-deploys the Pages site. Most ticks redeploy a byte-identical filter; clients short-circuit via `manifest.set_digest_sha256` so the bloom is only re-downloaded when the underlying entry set actually changed.
 
 ## Key encoding
 
@@ -86,9 +88,7 @@ The seed is deterministic and public (`blake3::hash(b"osv-bloom v1 deterministic
 
 ## Output is deterministic
 
-For a given input set, the output bytes are byte-identical across runs. That lets the workflow `git diff --quiet dist/filter.bin` to decide whether to commit, so the git history reflects real OSV changes and not just clock ticks.
-
-The `built_at_unix_seconds` field changes every run, which would defeat the diff — but it's _inside_ the header, and the diff still picks up that the bitset is unchanged because most of the 380 KB is the bitset. The workflow's diff check trips on any byte change including the timestamp, which is conservative; if that ever becomes too noisy, we can split `dist/filter.bin` (bitset + bloom params, timestamp-free) from `dist/manifest.json` (built_at lives only here).
+For a given input set the bitset bytes are byte-identical across runs (constant seed + sorted-deduped entry list). Only the `built_at_unix_seconds` field inside the 64-byte header changes every run, so clients use `manifest.set_digest_sha256` — computed over the sorted entry set, timestamp-free — to decide whether to re-download.
 
 ## Sizing
 
