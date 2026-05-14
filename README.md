@@ -42,6 +42,14 @@ if bloom.contains("evil-pkg", &bucket(1, 0)) {
 
 GitHub Actions cron runs every 10 minutes. The workflow re-downloads `all.zip`, rebuilds the entry set, and re-deploys the Pages site. Most ticks redeploy a byte-identical filter; clients short-circuit via `manifest.set_digest_sha256` so the bloom is only re-downloaded when the underlying entry set actually changed.
 
+## Detection latency
+
+osv-bloom is a **post-disclosure** defence. The filter only contains packages OSV has already published as `MAL-*`. Observed lag between a malicious npm publish and the corresponding `MAL-*` entry landing in OSV's `all.zip` is on the order of hours to ~1 day (e.g. ~24 h for the [TanStack 2026-05-11 incident](https://tanstack.com/blog/npm-supply-chain-compromise-postmortem)). Within that window osv-bloom returns clean — same as querying OSV's live API would.
+
+The 10-minute refresh cadence keeps the published filter in lockstep with whatever OSV currently exposes; it does not shorten OSV's own ingestion latency.
+
+For staleness monitoring, consumers can compare `manifest.newest_mal_modified` (the max `modified` timestamp across all consumed advisories) against `built_at_unix` — if `newest_mal_modified` stops advancing while `built_at` keeps ticking, the upstream OSV feed is the bottleneck, not this filter.
+
 ## Key encoding
 
 For each `affected[]` in a `MAL-*.json`:
