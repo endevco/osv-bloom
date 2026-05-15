@@ -17,10 +17,13 @@ permissions:
   contents: write
 
 # Two deploys racing the same branch would overwrite each other's
-# force-push. One refresh at a time.
+# force-push. One refresh at a time. If a new run is queued while
+# the previous is still going, cancel the in-flight run: the newer
+# one will pick up fresher OSV data and the orphan-commit push is
+# idempotent, so dropping the older mid-flight is harmless.
 concurrency:
   group: gh-pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
@@ -47,6 +50,18 @@ jobs:
           mkdir -p _site
           cargo run --release -p osv-bloom-build -- --out-dir _site
           touch _site/.nojekyll
+
+      - name: Sanity-check filter
+        # Defence in depth: the build binary already bails when entry
+        # count drops below MIN_ENTRIES, but if a future refactor moves
+        # that guard, this keeps us from deploying a useless filter.
+        run: |
+          set -euo pipefail
+          entries=$(jq -r '.entry_count' _site/manifest.json)
+          if [ "$entries" -lt 1000 ]; then
+            echo "refusing to deploy: entry_count=$entries below floor (1000)"
+            exit 1
+          fi
 
       - name: Summary
         run: |
