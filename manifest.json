@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "built_at_unix": 1790451739,
+  "built_at_rfc3339": "2026-09-26T19:42:19Z",
+  "entry_count": 226908,
+  "advisory_count": 221615,
+  "bloom_m_bits": 3262392,
+  "bloom_k_hashes": 10,
+  "bloom_byte_len": 407863,
+  "set_digest_sha256": "d5a4c366e87ddb629eab1989bebd470ba8c9b464a4d607abec8498410b043ee0",
+  "filter_sha256": "911de5903f670d526d73609c3e6d4e2df33f580a4186873359382c9afb8a57e5",
+  "target_fpr": 0.001,
+  "source_url": "https://osv-vulnerabilities.storage.googleapis.com/npm/all.zip",
+  "newest_mal_modified": "2026-09-26T15:30:05.791426594Z"
+}
